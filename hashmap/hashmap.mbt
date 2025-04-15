@@ -61,7 +61,7 @@ test "power_2_above" {
 /// ```
 pub fn new[K, V](capacity~ : Int = 8) -> T[K, V] {
   let capacity = power_2_above(8, capacity)
-  { size: 0, capacity, entries: FixedArray::make(capacity, None) }
+  { size: 0, mask: capacity - 1, entries: FixedArray::make(capacity, None) }
 }
 
 ///|
@@ -127,10 +127,10 @@ fn set_with_hash[K : Eq, V](
   value : V,
   hash : Int
 ) -> Unit {
-  if self.size >= self.capacity / 2 {
+  if self.size > self.mask / 2 {
     self.grow()
   }
-  for idx = hash & (self.capacity - 1), entry = { psl: 0, hash, key, value } {
+  for idx = hash & self.mask, entry = { psl: 0, hash, key, value } {
     match self.entries[idx] {
       None => {
         self.entries[idx] = Some(entry)
@@ -149,7 +149,7 @@ fn set_with_hash[K : Eq, V](
           entry
         }
         curr_entry.psl += 1
-        continue (idx + 1) & (self.capacity - 1), curr_entry
+        continue (idx + 1) & self.mask, curr_entry
       }
     }
   }
@@ -206,7 +206,7 @@ pub fn get[K : Hash + Eq, V](self : T[K, V], key : K) -> V? {
 
 ///|
 fn get_with_hash[K : Hash + Eq, V](self : T[K, V], key : K, hash : Int) -> V? {
-  for i = 0, idx = hash & (self.capacity - 1) {
+  for i = 0, idx = hash & self.mask {
     match self.entries[idx] {
       Some(entry) => {
         if entry.hash == hash && entry.key == key {
@@ -215,7 +215,7 @@ fn get_with_hash[K : Hash + Eq, V](self : T[K, V], key : K, hash : Int) -> V? {
         if i > entry.psl {
           break None
         }
-        continue i + 1, (idx + 1) & (self.capacity - 1)
+        continue i + 1, (idx + 1) & self.mask
       }
       None => break None
     }
@@ -371,11 +371,10 @@ pub fn contains[K : Hash + Eq, V](self : T[K, V], key : K) -> Bool {
 /// ```
 pub fn remove[K : Hash + Eq, V](self : T[K, V], key : K) -> Unit {
   let hash = key.hash()
-  for i = 0, idx = hash & (self.capacity - 1) {
+  for i = 0, idx = hash & self.mask {
     match self.entries[idx] {
       Some(entry) => {
         if entry.hash == hash && entry.key == key {
-          self.entries[idx] = None
           self.shift_back(idx)
           self.size -= 1
           break
@@ -383,7 +382,7 @@ pub fn remove[K : Hash + Eq, V](self : T[K, V], key : K) -> Unit {
         if i > entry.psl {
           break
         }
-        continue i + 1, (idx + 1) & (self.capacity - 1)
+        continue i + 1, (idx + 1) & self.mask
       }
       None => break
     }
@@ -392,7 +391,7 @@ pub fn remove[K : Hash + Eq, V](self : T[K, V], key : K) -> Unit {
 
 ///|
 fn shift_back[K : Hash, V](self : T[K, V], start_index : Int) -> Unit {
-  for prev = start_index, curr = (start_index + 1) & (self.capacity - 1) {
+  for prev = start_index, curr = (start_index + 1) & self.mask {
     match self.entries[curr] {
       Some({ psl, hash, key, value }) => {
         if psl == 0 {
@@ -400,7 +399,7 @@ fn shift_back[K : Hash, V](self : T[K, V], start_index : Int) -> Unit {
         }
         self.entries[prev] = Some({ psl: psl - 1, hash, key, value })
         self.entries[curr] = None
-        continue curr, (curr + 1) & (self.capacity - 1)
+        continue curr, (curr + 1) & self.mask
       }
       None => break
     }
@@ -410,9 +409,9 @@ fn shift_back[K : Hash, V](self : T[K, V], start_index : Int) -> Unit {
 ///|
 fn grow[K : Eq, V](self : T[K, V]) -> Unit {
   let old_entries = self.entries
-  let new_capacity = self.capacity << 1
+  let new_capacity = self.capacity() << 1
   self.entries = FixedArray::make(new_capacity, None)
-  self.capacity = new_capacity
+  self.mask = new_capacity - 1
   self.size = 0
   for i in 0..<old_entries.length() {
     if old_entries[i] is Some({ key, value, hash, .. }) {

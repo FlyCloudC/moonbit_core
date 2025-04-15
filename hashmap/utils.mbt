@@ -179,7 +179,7 @@ pub fn from_iter[K : Hash + Eq, V](iter : Iter[(K, V)]) -> T[K, V] {
 /// ```
 pub fn to_array[K, V](self : T[K, V]) -> Array[(K, V)] {
   let mut i = 0
-  let res = while i < self.capacity {
+  let res = while i <= self.mask {
     if self.entries[i] is Some({ key, value, .. }) {
       i += 1
       break Array::make(self.size, (key, value))
@@ -190,7 +190,7 @@ pub fn to_array[K, V](self : T[K, V]) -> Array[(K, V)] {
   }
   if not(res.is_empty()) {
     let mut res_idx = 1
-    while res_idx < res.length() && i < self.capacity {
+    while res_idx < res.length() && i <= self.mask {
       if self.entries[i] is Some({ key, value, .. }) {
         res[res_idx] = (key, value)
         res_idx += 1
@@ -243,7 +243,7 @@ pub fn size[K, V](self : T[K, V]) -> Int {
 /// }
 /// ```
 pub fn capacity[K, V](self : T[K, V]) -> Int {
-  self.capacity
+  self.mask + 1
 }
 
 ///|
@@ -291,7 +291,7 @@ pub fn is_empty[K, V](self : T[K, V]) -> Bool {
 /// }
 /// ```
 pub fn each[K, V](self : T[K, V], f : (K, V) -> Unit) -> Unit {
-  for i in 0..<self.capacity {
+  for i in 0..=self.mask {
     if self.entries[i] is Some({ key, value, .. }) {
       f(key, value)
     }
@@ -323,7 +323,7 @@ pub fn each[K, V](self : T[K, V], f : (K, V) -> Unit) -> Unit {
 /// }
 /// ```
 pub fn eachi[K, V](self : T[K, V], f : (Int, K, V) -> Unit) -> Unit {
-  for i = 0, idx = 0; i < self.capacity; {
+  for i = 0, idx = 0; i <= self.mask; {
     match self.entries[i] {
       Some({ key, value, .. }) => {
         f(idx, key, value)

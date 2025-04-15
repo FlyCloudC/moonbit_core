@@ -40,9 +40,11 @@ priv struct Entry[K, V] {
 /// ```
 struct T[K, V] {
   mut entries : FixedArray[Entry[K, V]?]
-  mut capacity : Int
+  // mut capacity : Int
   // size of field `entries`, it is redundant but useful for performance
   // so we don't need do `self.entries.length()` every time
+  mut mask : Int // capacity - 1
+  // and since we use ​​mask​​ more frequently than capacity, we store it instead of capacity
   mut size : Int // active key-value pairs count
   // mut growAt : Int // threshold that triggers grow
 }
