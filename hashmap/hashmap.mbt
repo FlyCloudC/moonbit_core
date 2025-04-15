@@ -130,7 +130,12 @@ fn set_with_hash[K : Eq, V](
   if self.size > self.mask / 2 {
     self.grow()
   }
-  for idx = hash & self.mask, entry = { psl: 0, hash, key, value } {
+  self.put_entry({ psl: 0, key, value, hash })
+}
+
+///|
+fn put_entry[K : Eq, V](self : T[K, V], entry : Entry[K, V]) -> Unit {
+  for idx = entry.hash & self.mask, entry = entry {
     match self.entries[idx] {
       None => {
         self.entries[idx] = Some(entry)
@@ -390,18 +395,14 @@ pub fn remove[K : Hash + Eq, V](self : T[K, V], key : K) -> Unit {
 }
 
 ///|
-fn shift_back[K : Hash, V](self : T[K, V], start_index : Int) -> Unit {
-  for prev = start_index, curr = (start_index + 1) & self.mask {
-    match self.entries[curr] {
-      Some({ psl, hash, key, value }) => {
-        if psl == 0 {
-          break
-        }
-        self.entries[prev] = Some({ psl: psl - 1, hash, key, value })
-        self.entries[curr] = None
-        continue curr, (curr + 1) & self.mask
-      }
-      None => break
+fn shift_back[K : Hash, V](self : T[K, V], curr : Int) -> Unit {
+  let next = (curr + 1) & self.mask
+  match self.entries[next] {
+    None | Some({ psl: 0, .. }) => self.entries[curr] = None
+    Some(entry) => {
+      entry.psl -= 1
+      self.entries[curr] = Some(entry)
+      self.shift_back(next)
     }
   }
 }
@@ -414,8 +415,9 @@ fn grow[K : Eq, V](self : T[K, V]) -> Unit {
   self.mask = new_capacity - 1
   self.size = 0
   for i in 0..<old_entries.length() {
-    if old_entries[i] is Some({ key, value, hash, .. }) {
-      self.set_with_hash(key, value, hash)
+    if old_entries[i] is Some(entry) {
+      entry.psl = 0
+      self.put_entry(entry)
     }
   }
 }
