@@ -14,16 +14,11 @@
 
 ///|
 fn power_2_above(x : Int, n : Int) -> Int {
-  for i = x {
-    if i >= n {
-      break i
-    }
-    let next = i << 1
-    if next < 0 {
-      // overflow happened
-      break i
-    }
-    continue next
+  guard n < 0x40000000 else { return 0x40000000 }
+  for i = x; i < n; {
+    continue i << 1
+  } else {
+    i
   }
 }
 
@@ -210,7 +205,7 @@ pub fn get[K : Hash + Eq, V](self : T[K, V], key : K) -> V? {
 }
 
 ///|
-fn get_with_hash[K : Hash + Eq, V](self : T[K, V], key : K, hash : Int) -> V? {
+fn get_with_hash[K : Eq, V](self : T[K, V], key : K, hash : Int) -> V? {
   for i = 0, idx = hash & self.mask {
     match self.entries[idx] {
       Some(entry) => {
@@ -347,10 +342,7 @@ pub fn get_or_default[K : Hash + Eq, V](
 /// }
 /// ```
 pub fn contains[K : Hash + Eq, V](self : T[K, V], key : K) -> Bool {
-  match self.get(key) {
-    Some(_) => true
-    None => false
-  }
+  self.get(key) is Some(_)
 }
 
 ///|
@@ -395,7 +387,7 @@ pub fn remove[K : Hash + Eq, V](self : T[K, V], key : K) -> Unit {
 }
 
 ///|
-fn shift_back[K : Hash, V](self : T[K, V], curr : Int) -> Unit {
+fn shift_back[K, V](self : T[K, V], curr : Int) -> Unit {
   let next = (curr + 1) & self.mask
   match self.entries[next] {
     None | Some({ psl: 0, .. }) => self.entries[curr] = None
@@ -411,6 +403,7 @@ fn shift_back[K : Hash, V](self : T[K, V], curr : Int) -> Unit {
 fn grow[K : Eq, V](self : T[K, V]) -> Unit {
   let old_entries = self.entries
   let new_capacity = self.capacity() << 1
+  guard new_capacity > 0 else { abort("hashmap capacity overflow") }
   self.entries = FixedArray::make(new_capacity, None)
   self.mask = new_capacity - 1
   self.size = 0
@@ -480,11 +473,7 @@ pub impl[K : @quickcheck.Arbitrary + Hash + Eq, V : @quickcheck.Arbitrary] @quic
   K,
   V,
 ] with arbitrary(size, rs) {
-  let m = new()
-  (@quickcheck.Arbitrary::arbitrary(size, rs) : Iter[(K, V)]).each(fn {
-    (k, v) => m.set(k, v)
-  })
-  m
+  @quickcheck.Arbitrary::arbitrary(size, rs) |> from_iter
 }
 
 ///|
