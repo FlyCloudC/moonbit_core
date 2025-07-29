@@ -48,7 +48,7 @@ pub fn clone(self : RandomState) -> RandomState {
 ///|
 /// Skip the next random number.
 pub fn next(self : RandomState) -> Unit {
-  self.next_uint64() |> ignore
+  self.seed += self.gamma
 }
 
 ///|
@@ -62,7 +62,9 @@ pub fn next_uint64(self : RandomState) -> UInt64 {
 ///|
 /// Get the next random number as a 32-bit unsigned integer.
 pub fn next_uint(self : RandomState) -> UInt {
-  self.next_uint64().to_uint()
+  let { seed, gamma } = self
+  self.seed = seed + gamma
+  mix32(self.seed)
 }
 
 ///|
@@ -90,9 +92,9 @@ pub fn next_positive_int(self : RandomState) -> Int {
   let r = self.next_int()
   match r {
     -2147483648 => 2147483647
+    -2147483647..<0 => -r
     0 => 1
-    r if r < 0 => -r
-    r => r
+    1..<_ => r
   }
 }
 
@@ -123,6 +125,13 @@ fn mix64(z : UInt64) -> UInt64 {
   let z = (z ^ (z >> 30)) * 0xff51afd7ed558ccd
   let z = (z ^ (z >> 33)) * 0xc4ceb9fe1a85ec53
   z ^ (z >> 33)
+}
+
+///|
+fn mix32(z : UInt64) -> UInt {
+  let z = (z ^ (z >> 30)) * 0xff51afd7ed558ccd
+  let z = (z ^ (z >> 33)) * 0xc4ceb9fe1a85ec53
+  (z >> 32).to_uint()
 }
 
 ///|
