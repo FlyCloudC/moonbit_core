@@ -119,27 +119,17 @@ pub fn split(self : RandomState) -> RandomState {
 }
 
 ///|
-fn shift_xor(n : Int, w : UInt64) -> UInt64 {
-  w ^ (w >> n)
+fn mix64(z : UInt64) -> UInt64 {
+  let z = (z ^ (z >> 30)) * 0xff51afd7ed558ccd
+  let z = (z ^ (z >> 33)) * 0xc4ceb9fe1a85ec53
+  z ^ (z >> 33)
 }
 
 ///|
-fn shift_xor_mul(n : Int, k : UInt64, w : UInt64) -> UInt64 {
-  shift_xor(n, w) * k
-}
-
-///|
-fn mix64(z0 : UInt64) -> UInt64 {
-  let z1 = shift_xor_mul(30, 0xff51afd7ed558ccd, z0)
-  let z2 = shift_xor_mul(33, 0xc4ceb9fe1a85ec53, z1)
-  shift_xor(33, z2)
-}
-
-///|
-fn mix64variant13(z0 : UInt64) -> UInt64 {
-  let z1 = shift_xor_mul(30, 0xbf58476d1ce4e5b9, z0)
-  let z2 = shift_xor_mul(27, 0x94d049bb133111eb, z1)
-  shift_xor(31, z2)
+fn mix64variant13(z : UInt64) -> UInt64 {
+  let z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
+  let z = (z ^ (z >> 27)) * 0x94d049bb133111eb
+  z ^ (z >> 31)
 }
 
 ///|
