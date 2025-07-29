@@ -16,7 +16,7 @@
 struct RandomState {
   mut seed : UInt64
   gamma : UInt64
-} derive(Show, Default)
+} derive(Show)
 
 ///|
 let golden_gamma : UInt64 = 0x9e3779b97f4a7c15
@@ -31,6 +31,12 @@ let float_ulp : Float = 1.0.to_float() / (1L << 24).to_float()
 /// Create a new RandomState from an optional seed.
 pub fn new(seed? : UInt64 = 37) -> RandomState {
   { seed: mix64(seed), gamma: mix_gamma(seed + golden_gamma) }
+}
+
+///|
+/// Create a new RandomState from the default seed.
+pub impl Default for RandomState with default() {
+  new()
 }
 
 ///|

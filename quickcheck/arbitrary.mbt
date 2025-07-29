@@ -128,7 +128,7 @@ pub fn[T : Arbitrary] gen(size? : Int, state? : @splitmix.RandomState) -> T {
     Some(x) => x
   }
   let state = match state {
-    None => @splitmix.RandomState::default()
+    None => @splitmix.new()
     Some(x) => x
   }
   Arbitrary::arbitrary(size, state)
