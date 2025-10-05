@@ -46,27 +46,34 @@ priv enum Sign {
 
 ///|
 /// Invariants:
-/// - ((radix - 1) ^ 2) must fit in an Int64
-/// - radix can only be a power of 2
-/// - radix_bit_len is multiple of 4
-/// - radix_bit_len <= 32
-let radix_bit_len = 32
+/// - ((RADIX - 1) ^ 2) must fit in an Int64
+/// - RADIX can only be a power of 2
+/// - RADIX_BIT_LEN is multiple of 4
+/// - RADIX_BIT_LEN <= 32
+const RADIX_BIT_LEN = 32
 
 ///|
 /// The base of the number system.
-let radix : UInt64 = 1UL << radix_bit_len // TODO: This can be generalized once we have const generics
+const RADIX : UInt64 = 0x100000000UL // TODO: This can be generalized once we have const generics
 
 ///|
-/// The mask to extract the lower `radix_bit_len` bits.
-let radix_mask : UInt64 = radix - 1
+/// The mask to extract the lower `RADIX_BIT_LEN` bits.
+const RADIX_MASK : UInt64 = 0xffffffffUL
+
+///|
+test "const invariants" {
+  // TODO: Inline to its definition once it's recognized as a constant expression
+  assert_eq(RADIX, 1UL << RADIX_BIT_LEN)
+  assert_eq(RADIX_MASK, RADIX - 1)
+}
 
 ///|
 /// The ratio of the number of decimal digits to the number of radix digits.
-let decimal_ratio = 0.302 // log10(2)
+const DECIMAL_RATIO = 0.302 // log10(2)
 
 ///|
 /// When to switch to Karatsuba multiplication
-let karatsuba_threshold = 50
+const KARATSUBA_THRESHOLD = 50
 
 // Useful bigints
 
@@ -167,12 +174,12 @@ pub fn BigInt::from_uint64(n : UInt64) -> BigInt {
   if n == 0UL {
     return { limbs: FixedArray::make(1, 0), sign: Positive, len: 1 }
   }
-  let limbs = FixedArray::make(64 / radix_bit_len, 0U)
+  let limbs = FixedArray::make(64 / RADIX_BIT_LEN, 0U)
   let mut m = n
   let mut i = 0
   while m > 0 {
-    limbs[i] = (m % radix).to_uint()
-    m /= radix
+    limbs[i] = (m % RADIX).to_uint()
+    m /= RADIX
     i += 1
   }
   { limbs, sign: Positive, len: i }
@@ -244,8 +251,8 @@ pub impl Add for BigInt with add(self : BigInt, other : BigInt) -> BigInt {
     let a = if i < self_len { self.limbs[i].to_uint64() } else { 0 }
     let b = if i < other_len { other.limbs[i].to_uint64() } else { 0 }
     let sum = a + b + carry
-    limbs[i] = (sum % radix).to_uint()
-    carry = sum / radix
+    limbs[i] = (sum % RADIX).to_uint()
+    carry = sum / RADIX
     i += 1
   }
   { limbs, sign: Positive, len: i }
@@ -296,7 +303,7 @@ pub impl Sub for BigInt with sub(self : BigInt, other : BigInt) -> BigInt {
     let b = if i < other_len { other.limbs[i].to_int64() } else { 0 }
     let diff = a - b - borrow // 0 <= a < radix, 0 <= b < radix, 0 <= borrow <= 1 => -radix <= diff < radix
     if diff < 0L {
-      limbs[i] = (diff + radix.reinterpret_as_int64())
+      limbs[i] = (diff + RADIX.reinterpret_as_int64())
         .reinterpret_as_uint64()
         .to_uint() // -radix <= diff < 0, so we don't need to mod by radix
       borrow = 1L
@@ -341,7 +348,7 @@ pub impl Mul for BigInt with mul(self : BigInt, other : BigInt) -> BigInt {
   if self.is_zero() || other.is_zero() {
     return zero
   }
-  let ret = if self.len < karatsuba_threshold || other.len < karatsuba_threshold {
+  let ret = if self.len < KARATSUBA_THRESHOLD || other.len < KARATSUBA_THRESHOLD {
     self.grade_school_mul(other)
   } else {
     self.karatsuba_mul(other)
@@ -364,8 +371,8 @@ fn BigInt::grade_school_mul(self : BigInt, other : BigInt) -> BigInt {
         self.limbs[i].to_uint64() *
         (if j < other_len { other.limbs[j].to_uint64() } else { 0 }) +
         carry
-      limbs[i + j] = (product % radix).to_uint()
-      carry = product / radix
+      limbs[i + j] = (product % RADIX).to_uint()
+      carry = product / RADIX
     }
   }
   if limbs[self_len + other_len - 1] == 0 {
@@ -384,8 +391,8 @@ fn BigInt::karatsuba_mul(self : BigInt, other : BigInt) -> BigInt {
   let p1 = xh * yh
   let p2 = xl * yl
   let p3 = (xh + xl) * (yh + yl)
-  (p1 << (radix_bit_len * 2 * half)) +
-  ((p3 - p1 - p2) << (radix_bit_len * half)) +
+  (p1 << (RADIX_BIT_LEN * 2 * half)) +
+  ((p3 - p1 - p2) << (RADIX_BIT_LEN * half)) +
   p2
 }
 
@@ -516,9 +523,9 @@ fn BigInt::grade_school_div(self : BigInt, other : BigInt) -> (BigInt, BigInt) {
     let x = number.to_uint64()
     let mut y = 0UL
     for i = self.len - 1; i >= 0; i = i - 1 {
-      y = y << radix_bit_len
+      y = y << RADIX_BIT_LEN
       y += a[i].to_uint64()
-      a[i] = ((y / x) & radix_mask).to_uint()
+      a[i] = ((y / x) & RADIX_MASK).to_uint()
       y %= x
     }
     if ret.limbs[ret.len - 1] == 0 {
@@ -545,7 +552,7 @@ fn BigInt::grade_school_div(self : BigInt, other : BigInt) -> (BigInt, BigInt) {
   // where a and b represent the limbs of the adjusted dividend and divisor
   let lshift = max(
     0,
-    radix_bit_len - (64 - divisor.limbs[divisor.len - 1].to_int64().clz()),
+    RADIX_BIT_LEN - (64 - divisor.limbs[divisor.len - 1].to_int64().clz()),
   )
   let a_len = dividend.len
   let dividend = dividend << lshift
@@ -578,8 +585,8 @@ fn BigInt::grade_school_div(self : BigInt, other : BigInt) -> (BigInt, BigInt) {
     let u1 = a[i + b_len - 1]
     let u2 = a[i + b_len - 2]
     // D3 compute qh
-    let mut qh = (u0 * radix + u1) / v1
-    if qh * v2 > radix * (u0 * radix + u1 - qh * v1) + u2 {
+    let mut qh = (u0 * RADIX + u1) / v1
+    if qh * v2 > RADIX * (u0 * RADIX + u1 - qh * v1) + u2 {
       qh -= 1
     }
     // D4 divident = divident - qh * divisor
@@ -588,26 +595,26 @@ fn BigInt::grade_school_div(self : BigInt, other : BigInt) -> (BigInt, BigInt) {
     for j in 0..<b_len {
       carry += qh * b[j]
       borrow += a[i + j].reinterpret_as_int64()
-      borrow -= (carry & radix_mask).reinterpret_as_int64()
-      a[i + j] = (borrow & radix_mask.reinterpret_as_int64()).reinterpret_as_uint64()
-      borrow = borrow >> radix_bit_len
-      carry = carry >> radix_bit_len
+      borrow -= (carry & RADIX_MASK).reinterpret_as_int64()
+      a[i + j] = (borrow & RADIX_MASK.reinterpret_as_int64()).reinterpret_as_uint64()
+      borrow = borrow >> RADIX_BIT_LEN
+      carry = carry >> RADIX_BIT_LEN
     }
     borrow = borrow + a[i + b_len].reinterpret_as_int64()
     borrow -= carry.reinterpret_as_int64()
-    a[i + b_len] = (borrow & radix_mask.reinterpret_as_int64()).reinterpret_as_uint64()
-    borrow = borrow >> radix_bit_len
+    a[i + b_len] = (borrow & RADIX_MASK.reinterpret_as_int64()).reinterpret_as_uint64()
+    borrow = borrow >> RADIX_BIT_LEN
     if borrow < 0L {
       carry = 0UL
       for j in 0..<b_len {
         carry += a[i + j]
         carry += b[j]
-        a[i + j] = carry & radix_mask
-        carry = carry >> radix_bit_len
+        a[i + j] = carry & RADIX_MASK
+        carry = carry >> RADIX_BIT_LEN
       }
       carry += a[i + b_len]
-      a[i + b_len] = carry & radix_mask
-      carry = carry >> radix_bit_len
+      a[i + b_len] = carry & RADIX_MASK
+      carry = carry >> RADIX_BIT_LEN
       borrow += carry.reinterpret_as_int64()
       qh -= 1
     }
@@ -663,19 +670,19 @@ pub impl Shl for BigInt with shl(self : BigInt, n : Int) -> BigInt {
   }
   if !self.is_zero() {
     let new_limbs = FixedArray::make(
-      self.len + (n + radix_bit_len - 1) / radix_bit_len, // ceiling(n / radix_bit_len)
+      self.len + (n + RADIX_BIT_LEN - 1) / RADIX_BIT_LEN, // ceiling(n / RADIX_BIT_LEN)
       0U,
     )
     let a = self.limbs
-    let r = n % radix_bit_len
-    let lz = n / radix_bit_len // number of leading zeros
+    let r = n % RADIX_BIT_LEN
+    let lz = n / RADIX_BIT_LEN // number of leading zeros
     let mut len = self.len + lz
     if r != 0 {
       let mut carry = 0UL
       for i in 0..<self.len {
         carry = carry | (a[i].to_uint64() << r)
-        new_limbs[i + lz] = (carry % radix).to_uint()
-        carry = carry >> radix_bit_len
+        new_limbs[i + lz] = (carry % RADIX).to_uint()
+        carry = carry >> RADIX_BIT_LEN
       }
       if carry != 0 {
         new_limbs[self.len + lz] = carry.to_uint()
@@ -718,8 +725,8 @@ pub impl Shr for BigInt with shr(self : BigInt, n : Int) -> BigInt {
   if n < 0 {
     abort("negative shift count")
   }
-  let r = n % radix_bit_len
-  let lz = n / radix_bit_len
+  let r = n % RADIX_BIT_LEN
+  let lz = n / RADIX_BIT_LEN
   if lz >= self.len {
     match self.sign {
       Positive => return zero
@@ -739,7 +746,7 @@ pub impl Shr for BigInt with shr(self : BigInt, n : Int) -> BigInt {
     for i = self.len - 1; i >= lz; i = i - 1 {
       let x = a[i].to_uint64()
       new_limbs[i - lz] = ((x >> r) | carry).to_uint()
-      carry = (x << (radix_bit_len - r)) % radix
+      carry = (x << (RADIX_BIT_LEN - r)) % RADIX
     }
     if new_len > 1 && new_limbs[new_len - 1] == 0 {
       new_len -= 1
@@ -877,19 +884,19 @@ pub impl Eq for BigInt with equal(self, other) {
 ///   inspect(zero.to_string(), content="0")
 /// ```
 pub fn BigInt::to_string(self : BigInt) -> String {
-  // This function first converts the BigInt to a decimal representation, with a radix of 2^(`decimal_radix_bit_len`).
+  // This function first converts the BigInt to a decimal representation, with a radix of 2^(`decimal_RADIX_BIT_LEN`).
   // Then it converts the decimal representation to a string slot by slot.
   if self.is_zero() {
     return "0"
   }
-  let decimal_radix_bit_len = 19 - 1 - (1 + radix_bit_len) / 3 // < len(9,223,372,036,854,775,807) - len(2^radix_bit_len). len means the number of digits in decimal.
-  let decimal_mask = 10_000_000L // 10^(decimal_radix_bit_len). TODO: compute it when we have power function.
+  let decimal_RADIX_BIT_LEN = 19 - 1 - (1 + RADIX_BIT_LEN) / 3 // < len(9,223,372,036,854,775,807) - len(2^RADIX_BIT_LEN). len means the number of digits in decimal.
+  let decimal_mask = 10_000_000L // 10^(decimal_RADIX_BIT_LEN). TODO: compute it when we have power function.
   // The following value should fit well into an Int without precision loss.
   // This is an approximation of the number of slots needed to represent the decimal value.
   let decimal_len = unchecked_double_to_int(
-    (self.len * radix_bit_len).to_double() *
-    decimal_ratio /
-    decimal_radix_bit_len.to_double() +
+    (self.len * RADIX_BIT_LEN).to_double() *
+    DECIMAL_RATIO /
+    decimal_RADIX_BIT_LEN.to_double() +
     1,
   )
   let s = if self.sign == Negative { "-" } else { "" }
@@ -898,7 +905,7 @@ pub fn BigInt::to_string(self : BigInt) -> String {
   for i = self.len - 1; i >= 0; i = i - 1 {
     let mut x = self.limbs[i].to_int64()
     for j in 0..<v_idx {
-      let y = (v[j] << radix_bit_len) | x
+      let y = (v[j] << RADIX_BIT_LEN) | x
       x = y / decimal_mask
       v[j] = y % decimal_mask
     }
@@ -910,7 +917,7 @@ pub fn BigInt::to_string(self : BigInt) -> String {
   }
   let mut ret = ""
   for i in 0..<(v_idx - 1) {
-    for j in 0..<decimal_radix_bit_len {
+    for j in 0..<decimal_RADIX_BIT_LEN {
       let x = v[i] % 10L
       v[i] /= 10L
       ret = x.to_string() + ret
@@ -986,11 +993,11 @@ pub fn BigInt::from_string(input : String) -> BigInt {
     Positive
   }
   let mut b_len = (
-      unchecked_double_to_int(len.to_double() / decimal_ratio) +
+      unchecked_double_to_int(len.to_double() / DECIMAL_RATIO) +
       1 +
-      radix_bit_len
+      RADIX_BIT_LEN
     ) /
-    radix_bit_len +
+    RADIX_BIT_LEN +
     1
   let b = FixedArray::make(b_len, 0U)
   for
@@ -1005,8 +1012,8 @@ pub fn BigInt::from_string(input : String) -> BigInt {
     let mut carry = x.reinterpret_as_uint().to_uint64()
     for j in 0..<b_len {
       carry += b[j].to_uint64() * 10
-      b[j] = (carry % radix).to_uint()
-      carry /= radix
+      b[j] = (carry % RADIX).to_uint()
+      carry /= RADIX
     }
   }
   while b[b_len - 1] == 0 && b_len > 1 {
@@ -1042,7 +1049,7 @@ pub fn BigInt::from_string(input : String) -> BigInt {
 ///   inspect(@bigint.BigInt::from_hex("DEADBEEF"), content="3735928559")
 /// ```
 pub fn BigInt::from_hex(input : String) -> BigInt {
-  // WARN: this implementation assumes that `radix_bit_len` is a multiple of 4.
+  // WARN: this implementation assumes that `RADIX_BIT_LEN` is a multiple of 4.
   fn char_from_hex(x : Int) -> UInt {
     (match x {
       '0'..='9' => x - '0'
@@ -1061,7 +1068,7 @@ pub fn BigInt::from_hex(input : String) -> BigInt {
   } else {
     (Positive, len)
   }
-  let nb_char = radix_bit_len / 4 // number of char per limb
+  let nb_char = RADIX_BIT_LEN / 4 // number of char per limb
   let quotient = number_len / nb_char
   let mod = number_len % nb_char
   let mut b_len = if mod == 0 { quotient } else { quotient + 1 }
@@ -1113,8 +1120,8 @@ pub fn BigInt::to_hex(self : BigInt, uppercase? : Bool = true) -> String {
   if self.is_zero() {
     return "0"
   }
-  // WARN: this implementation assumes that `radix_bit_len` is a multiple of 4.
-  let digits_per_limb = radix_bit_len / 4
+  // WARN: this implementation assumes that `RADIX_BIT_LEN` is a multiple of 4.
+  let digits_per_limb = RADIX_BIT_LEN / 4
   let buf = if self.sign is Negative {
     let builder = StringBuilder::new(size_hint=self.len * digits_per_limb + 2)
     builder.write_char('-')
@@ -1270,15 +1277,15 @@ pub fn BigInt::from_octets(input : Bytes, signum? : Int = 1) -> BigInt {
   if len == 0 {
     abort("empty octet string")
   }
-  let div = len * 8 / radix_bit_len
-  let mod = len * 8 % radix_bit_len // number of bits in the first limb
+  let div = len * 8 / RADIX_BIT_LEN
+  let mod = len * 8 % RADIX_BIT_LEN // number of bits in the first limb
   let limbs_len = if mod == 0 { div } else { div + 1 }
   let limbs = FixedArray::make(limbs_len, 0U)
   // head at most significant limb
   for i in 0..<(mod / 8) {
     limbs[limbs_len - 1] = (limbs[limbs_len - 1] << 8) | input[i].to_uint()
   }
-  let byte_per_limb = radix_bit_len / 8
+  let byte_per_limb = RADIX_BIT_LEN / 8
   // tail
   for i in 0..<div {
     for j in 0..<byte_per_limb {
@@ -1334,7 +1341,7 @@ pub fn BigInt::to_octets(self : BigInt, length? : Int) -> Bytes {
   }
   let head_bits = 32 - self.limbs[self.len - 1].reinterpret_as_int().clz()
   let tail_len = self.len - 1
-  let len = (head_bits + 7) / 8 + tail_len * (radix_bit_len / 8)
+  let len = (head_bits + 7) / 8 + tail_len * (RADIX_BIT_LEN / 8)
   let len = max(length, len)
   let result = FixedArray::make(len, Byte::default())
   for i = 0; i < len && i / 4 < self.len; i = i + 1 {
@@ -1723,12 +1730,12 @@ pub fn BigInt::to_int64(self : BigInt) -> Int64 {
 /// ```
 pub fn BigInt::to_uint64(self : BigInt) -> UInt64 {
   let value = if self.sign == Negative { (1N << 64) + self } else { self }
-  let len = 64 / radix_bit_len
+  let len = 64 / RADIX_BIT_LEN
   let len = if value.len < len { value.len } else { len }
   let mut result = 0UL
   for i = len - 1; i >= 0; i = i - 1 {
-    result = result << radix_bit_len
-    result = result | (value.limbs[i].to_uint64() & radix_mask)
+    result = result << RADIX_BIT_LEN
+    result = result | (value.limbs[i].to_uint64() & RADIX_MASK)
   }
   result
 }
@@ -1755,8 +1762,8 @@ pub fn BigInt::bit_length(self : BigInt) -> Int {
   if self.len == 0 {
     return 0
   }
-  let mut bit_length = (self.len - 1) * radix_bit_len +
-    (radix_bit_len - self.limbs[self.len - 1].clz())
+  let mut bit_length = (self.len - 1) * RADIX_BIT_LEN +
+    (RADIX_BIT_LEN - self.limbs[self.len - 1].clz())
   if self.sign == Negative {
     // check if this number is a power of two
     let mut pow2 = self.limbs[0].popcnt() == 1
@@ -1790,7 +1797,7 @@ pub fn BigInt::ctz(self : BigInt) -> Int {
   while i < self.len && self.limbs[i] == 0 {
     i = i + 1
   }
-  radix_bit_len * i + self.limbs[i].ctz()
+  RADIX_BIT_LEN * i + self.limbs[i].ctz()
 }
 
 ///|

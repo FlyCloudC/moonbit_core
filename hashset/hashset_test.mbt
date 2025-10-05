@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-let default_init_capacity = 8
+const DEFAULT_INIT_CAPACITY = 8
 
 ///|
 test "new_with_capacity_then_add " {
@@ -80,7 +80,7 @@ test "to_json" {
 ///|
 test "new" {
   let m : @hashset.HashSet[Int] = @hashset.new()
-  assert_eq(m.capacity(), default_init_capacity)
+  assert_eq(m.capacity(), DEFAULT_INIT_CAPACITY)
   inspect(m.length(), content="0")
 }
 
@@ -329,7 +329,7 @@ test "remove_and_shift_back" {
 ///|
 test "capacity_and_size" {
   let m = @hashset.new()
-  assert_eq(m.capacity(), default_init_capacity)
+  assert_eq(m.capacity(), DEFAULT_INIT_CAPACITY)
   inspect(m.length(), content="0")
   m.add("a")
   inspect(m.length(), content="1")
@@ -374,7 +374,7 @@ test "remove_and_shift_back" {
 ///|
 test "capacity_and_size" {
   let m = @hashset.new()
-  assert_eq(m.capacity(), default_init_capacity)
+  assert_eq(m.capacity(), DEFAULT_INIT_CAPACITY)
   inspect(m.length(), content="0")
   m.add("a")
   inspect(m.length(), content="1")

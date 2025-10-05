@@ -13,12 +13,12 @@
 // limitations under the License.
 
 ///|
-let default_init_capacity = 8
+const DEFAULT_INIT_CAPACITY = 8
 
 ///|
 test "new" {
   let m : @set.Set[Int] = @set.Set::new()
-  assert_eq(m.capacity(), default_init_capacity)
+  assert_eq(m.capacity(), DEFAULT_INIT_CAPACITY)
   assert_eq(m.length(), 0)
 }
 
@@ -205,7 +205,7 @@ test "remove_and_shift_back" {
 ///|
 test "capacity_and_size" {
   let m = @set.Set::new()
-  assert_eq(m.capacity(), default_init_capacity)
+  assert_eq(m.capacity(), DEFAULT_INIT_CAPACITY)
   assert_eq(m.length(), 0)
   m.add("a")
   assert_eq(m.length(), 1)
@@ -250,7 +250,7 @@ test "remove_and_shift_back" {
 ///|
 test "capacity_and_size" {
   let m = @set.Set::new()
-  assert_eq(m.capacity(), default_init_capacity)
+  assert_eq(m.capacity(), DEFAULT_INIT_CAPACITY)
   assert_eq(m.length(), 0)
   m.add("a")
   assert_eq(m.length(), 1)

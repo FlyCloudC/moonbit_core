@@ -126,7 +126,7 @@ pub fn[K, V] to_array(self : SortedMap[K, V]) -> Array[(K, V)] {
 
 ///|
 /// The ratio between the sizes of the left and right subtrees.
-let ratio = 5
+const RATIO = 5
 
 ///|
 fn[K, V] balance(
@@ -178,7 +178,7 @@ fn[K, V] balance(
   let rn = r.length()
   if ln + rn < 2 {
     make_tree(key, value, l, r)
-  } else if rn > ratio * ln {
+  } else if rn > RATIO * ln {
     // right is too big
     guard r is Tree(_, rl, rr, ..)
     let rln = rl.length()
@@ -188,7 +188,7 @@ fn[K, V] balance(
     } else {
       double_l(key, value, l, r)
     }
-  } else if ln > ratio * rn {
+  } else if ln > RATIO * rn {
     // left is too big
     guard l is Tree(_, ll, lr, ..)
     let lln = ll.length()

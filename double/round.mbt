@@ -13,16 +13,16 @@
 // limitations under the License.
 
 ///|
-let sign_mask : UInt64 = 0x8000_0000_0000_0000
+const SIGN_MASK : UInt64 = 0x8000_0000_0000_0000
 
 ///|
-let exp_bias = 1023
+const EXP_BIAS = 1023
 
 ///|
-let exp_bits = 11
+const EXP_BITS = 11
 
 ///|
-let frac_bits = 52
+const FRAC_BITS = 52
 
 ///|
 /// Returns an integer value by discarding the decimal part of the floating-point
@@ -44,14 +44,14 @@ let frac_bits = 52
 #as_free_fn
 pub fn Double::trunc(self : Double) -> Double {
   let u64 = self.reinterpret_as_uint64()
-  let biased_exp = ((u64 >> frac_bits) & ((0x1UL << exp_bits) - 1)).to_int()
-  if biased_exp < exp_bias {
-    return (u64 & sign_mask).reinterpret_as_double()
-  } else if biased_exp >= exp_bias + frac_bits {
+  let biased_exp = ((u64 >> FRAC_BITS) & ((0x1UL << EXP_BITS) - 1)).to_int()
+  if biased_exp < EXP_BIAS {
+    return (u64 & SIGN_MASK).reinterpret_as_double()
+  } else if biased_exp >= EXP_BIAS + FRAC_BITS {
     return self
   }
-  let mask_shift = biased_exp - exp_bias + exp_bits
-  let trunc_mask = (sign_mask.reinterpret_as_int64() >> mask_shift).reinterpret_as_uint64()
+  let mask_shift = biased_exp - EXP_BIAS + EXP_BITS
+  let trunc_mask = (SIGN_MASK.reinterpret_as_int64() >> mask_shift).reinterpret_as_uint64()
   return (u64 & trunc_mask).reinterpret_as_double()
 }
 

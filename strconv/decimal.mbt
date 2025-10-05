@@ -14,8 +14,8 @@
 
 ///|
 /// Maximum shift that we can do in one pass without overflow.
-/// We have to be able to accommodate 9 << max_shift.
-let max_shift = 59
+/// We have to be able to accommodate 9 << MAX_SHIFT.
+const MAX_SHIFT = 59
 
 ///|
 /// Decimal power of ten to binary power of two.
@@ -215,16 +215,16 @@ fn shift_priv(self : Decimal, s : Int) -> Unit {
   }
   let mut s = s
   if s > 0 {
-    while s > max_shift {
-      self.left_shift(max_shift)
-      s -= max_shift
+    while s > MAX_SHIFT {
+      self.left_shift(MAX_SHIFT)
+      s -= MAX_SHIFT
     }
     self.left_shift(s)
   }
   if s < 0 {
-    while s < -max_shift {
-      self.right_shift(max_shift)
-      s += max_shift
+    while s < -MAX_SHIFT {
+      self.right_shift(MAX_SHIFT)
+      s += MAX_SHIFT
     }
     self.right_shift(-s)
   }

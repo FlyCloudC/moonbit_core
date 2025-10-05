@@ -13,16 +13,16 @@
 // limitations under the License.
 
 ///|
-let sign_mask : UInt = 0x8000_0000
+const SIGN_MASK : UInt = 0x8000_0000
 
 ///|
-let exp_bias = 127
+const EXP_BIAS = 127
 
 ///|
-let exp_bits = 8
+const EXP_BITS = 8
 
 ///|
-let frac_bits = 23
+const FRAC_BITS = 23
 
 ///|
 /// Returns the truncated value of a floating-point number by removing its
@@ -49,14 +49,14 @@ let frac_bits = 23
 #as_free_fn
 pub fn Float::trunc(self : Float) -> Float {
   let u32 = self.reinterpret_as_uint()
-  let biased_exp = ((u32 >> frac_bits) & ((0x1U << exp_bits) - 1)).reinterpret_as_int()
-  if biased_exp < exp_bias {
-    return (u32 & sign_mask).reinterpret_as_float()
-  } else if biased_exp >= exp_bias + frac_bits {
+  let biased_exp = ((u32 >> FRAC_BITS) & ((0x1U << EXP_BITS) - 1)).reinterpret_as_int()
+  if biased_exp < EXP_BIAS {
+    return (u32 & SIGN_MASK).reinterpret_as_float()
+  } else if biased_exp >= EXP_BIAS + FRAC_BITS {
     return self
   }
-  let mask_shift = biased_exp - exp_bias + exp_bits
-  let trunc_mask = (sign_mask.reinterpret_as_int() >> mask_shift).reinterpret_as_uint()
+  let mask_shift = biased_exp - EXP_BIAS + EXP_BITS
+  let trunc_mask = (SIGN_MASK.reinterpret_as_int() >> mask_shift).reinterpret_as_uint()
   return (u32 & trunc_mask).reinterpret_as_float()
 }
 

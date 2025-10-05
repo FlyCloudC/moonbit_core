@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Default initial capacity
-
 ///|
-let default_init_capacity = 8
+const DEFAULT_INIT_CAPACITY = 8
 
 ///|
 /// Create new hash set.
 #as_free_fn
-pub fn[K] HashSet::new(capacity? : Int = default_init_capacity) -> HashSet[K] {
+pub fn[K] HashSet::new(capacity? : Int = DEFAULT_INIT_CAPACITY) -> HashSet[K] {
   let capacity = capacity.next_power_of_two()
   {
     size: 0,
@@ -192,7 +190,7 @@ fn[K] shift_back(self : HashSet[K], idx : Int) -> Unit {
 fn[K : Eq] grow(self : HashSet[K]) -> Unit {
   // handle zero capacity
   if self.capacity == 0 {
-    self.capacity = default_init_capacity
+    self.capacity = DEFAULT_INIT_CAPACITY
     self.capacity_mask = self.capacity - 1
     self.grow_at = calc_grow_threshold(self.capacity)
     self.size = 0

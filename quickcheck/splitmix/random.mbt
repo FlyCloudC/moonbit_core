@@ -19,18 +19,18 @@ struct RandomState {
 } derive(Show)
 
 ///|
-let golden_gamma : UInt64 = 0x9e3779b97f4a7c15
+const GOLDEN_GAMMA : UInt64 = 0x9e3779b97f4a7c15
 
 ///|
-let double_ulp : Double = 1.0 / (1L << 53).to_double()
+const DOUBLE_ULP : Double = 0x1.0p-53
 
 ///|
-let float_ulp : Float = 1.0.to_float() / (1L << 24).to_float()
+const FLOAT_ULP : Float = 0x1.0p-24
 
 ///|
 /// Create a new RandomState from an optional seed.
 pub fn new(seed? : UInt64 = 37) -> RandomState {
-  { seed: mix64(seed), gamma: mix_gamma(seed + golden_gamma) }
+  { seed: mix64(seed), gamma: mix_gamma(seed + GOLDEN_GAMMA) }
 }
 
 ///|
@@ -94,14 +94,14 @@ pub fn next_positive_int(self : RandomState) -> Int {
 /// Get the next random number as a float in [0, 1]
 pub fn next_float(self : RandomState) -> Float {
   let u = self.next_uint64()
-  (u >> 40).to_float() * float_ulp
+  (u >> 40).to_float() * FLOAT_ULP
 }
 
 ///|
 /// Get the next random number as a double in [0, 1]
 pub fn next_double(self : RandomState) -> Double {
   let u = self.next_uint64()
-  (u >> 11).to_double() * double_ulp
+  (u >> 11).to_double() * DOUBLE_ULP
 }
 
 ///|

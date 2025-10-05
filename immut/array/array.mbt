@@ -27,14 +27,14 @@ pub fn[A] T::new() -> T[A] {
 /// Create a persistent array with a given length and value.
 #as_free_fn
 pub fn[A] T::make(len : Int, value : A) -> T[A] {
-  let quot = len / branching_factor
-  let rem = len % branching_factor
+  let quot = len / BRANCHING_FACTOR
+  let rem = len % BRANCHING_FACTOR
   let leaves = if rem == 0 {
-    Array::make(quot, FixedArray::make(branching_factor, value))
+    Array::make(quot, FixedArray::make(BRANCHING_FACTOR, value))
   } else {
     let arr : Array[FixedArray[A]] = Array::make(
       quot + 1,
-      FixedArray::make(branching_factor, value),
+      FixedArray::make(BRANCHING_FACTOR, value),
     )
     arr[quot] = FixedArray::make(rem, value)
     arr
@@ -49,20 +49,20 @@ pub fn[A] T::make(len : Int, value : A) -> T[A] {
 /// Create a persistent array with a given length and a function to generate values.
 #as_free_fn
 pub fn[A] T::makei(len : Int, f : (Int) -> A raise?) -> T[A] raise? {
-  let quot = len / branching_factor
-  let rem = len % branching_factor
+  let quot = len / BRANCHING_FACTOR
+  let rem = len % BRANCHING_FACTOR
   let leaves = if rem == 0 {
-    Array::makei(quot, k => FixedArray::makei(branching_factor, i => f(
-      k * branching_factor + i,
+    Array::makei(quot, k => FixedArray::makei(BRANCHING_FACTOR, i => f(
+      k * BRANCHING_FACTOR + i,
     )))
   } else {
     let arr : Array[FixedArray[A]] = Array::make(quot + 1, [])
     for k in 0..<quot {
-      arr[k] = FixedArray::makei(branching_factor, i => f(
-        k * branching_factor + i,
+      arr[k] = FixedArray::makei(BRANCHING_FACTOR, i => f(
+        k * BRANCHING_FACTOR + i,
       ))
     }
-    arr[quot] = FixedArray::makei(rem, i => f(quot * branching_factor + i))
+    arr[quot] = FixedArray::makei(rem, i => f(quot * BRANCHING_FACTOR + i))
     arr
   }
   let size = len
@@ -98,17 +98,17 @@ pub fn[A] T::from_iter(iter : Iter[A]) -> T[A] {
   let mut index = 0
   let leaves = []
   iter.each(x => if index == 0 {
-    buf = FixedArray::make(branching_factor, x)
+    buf = FixedArray::make(BRANCHING_FACTOR, x)
     index += 1
-  } else if index < branching_factor {
+  } else if index < BRANCHING_FACTOR {
     buf[index] = x
     index += 1
   } else {
     leaves.push(buf)
     index = 1
-    buf = FixedArray::make(branching_factor, x)
+    buf = FixedArray::make(BRANCHING_FACTOR, x)
   })
-  if index == branching_factor {
+  if index == BRANCHING_FACTOR {
     leaves.push(buf)
   } else if index > 0 {
     let res = FixedArray::make(index, buf[0])
@@ -412,20 +412,20 @@ pub impl[A : Compare] Compare for T[A] with compare(self, other) {
 
 ///|
 fn[A] from_leaves(leaves : ArrayView[FixedArray[A]], cap : Int) -> Tree[A] {
-  if cap == branching_factor {
+  if cap == BRANCHING_FACTOR {
     Leaf(leaves[0])
-  } else if leaves.length() <= branching_factor {
+  } else if leaves.length() <= BRANCHING_FACTOR {
     let arr = FixedArray::make(leaves.length(), Empty)
     for i in 0..<leaves.length() {
       arr[i] = Leaf(leaves[i])
     }
     Node(arr, None)
   } else {
-    let len = leaves.length() * branching_factor
-    let child_cap = cap / branching_factor
+    let len = leaves.length() * BRANCHING_FACTOR
+    let child_cap = cap / BRANCHING_FACTOR
     let quot = len / child_cap
     let rem = len % child_cap
-    let times = child_cap / branching_factor
+    let times = child_cap / BRANCHING_FACTOR
     let arr = if rem == 0 {
       FixedArray::makei(quot, i => from_leaves(
         leaves[i * times:(i + 1) * times],
@@ -445,12 +445,12 @@ fn[A] from_leaves(leaves : ArrayView[FixedArray[A]], cap : Int) -> Tree[A] {
 
 ///|
 fn shift_cap_of_size(size : Int) -> (Int, Int) {
-  let mut cap = branching_factor
+  let mut cap = BRANCHING_FACTOR
   let mut depth = 0
   while cap < size {
-    cap *= branching_factor
+    cap *= BRANCHING_FACTOR
     depth += 1
   }
-  let shift = num_bits * depth
+  let shift = NUM_BITS * depth
   (shift, cap)
 }

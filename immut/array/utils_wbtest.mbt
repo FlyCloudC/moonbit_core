@@ -111,7 +111,7 @@ fn execute_array_test(rs : Array[Op]) -> Unit raise {
 fn branching_factor_power(a : Int) -> Int {
   let mut ret = 1
   for i in 0..<a {
-    ret *= branching_factor
+    ret *= BRANCHING_FACTOR
   }
   ret
 }
