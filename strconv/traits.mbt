@@ -20,7 +20,14 @@
 
 ///|
 pub(open) trait FromStr {
+  #deprecated("use `from_string_view` instead")
   from_string(String) -> Self raise StrConvError
+  from_string_view(StringView) -> Self raise StrConvError = _
+}
+
+///|
+impl FromStr with from_string_view(view) {
+  FromStr::from_string(view.to_string())
 }
 
 ///|
@@ -54,8 +61,8 @@ pub impl FromStr for Double with from_string(str) {
 }
 
 ///|
-pub fn[A : FromStr] parse(str : String) -> A raise StrConvError {
-  A::from_string(str)
+pub fn[A : FromStr] parse(str : StringView) -> A raise StrConvError {
+  A::from_string_view(str)
 }
 
 ///|
